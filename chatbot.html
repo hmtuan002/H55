@@ -137,11 +137,41 @@
             justify-content: space-between;
             margin-top: 20px;
         }
+        .typing-indicator {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #f1f1f1;
+            border-radius: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+        .typing-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #888;
+            margin: 0 2px;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Chatbot Đánh giá</h1>
+        <h1>Chatbot Đánh giá (Gemini)</h1>
         <button class="logout-btn" id="logout-btn">Đăng xuất</button>
     </div>
 
@@ -189,15 +219,20 @@
     </div>
 
     <script>
-        // Firebase configuration - thay thế bằng cấu hình của bạn
+        // Firebase configuration
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyC7fGLildyGOyKC36ilCFLv8JKKNAxX4ug",
+            authDomain: "h55-tl.firebaseapp.com",
+            projectId: "h55-tl",
+            storageBucket: "h55-tl.appspot.com",
+            messagingSenderId: "989042965590",
+            appId: "1:989042965590:web:63c7555b427a983ba10ff7"
         };
+
+        // Gemini API Key
+        const GEMINI_API_KEY = "AIzaSyAn9dMMM5u8dEGpI8mEzQvdMSuI8KFH8jM";
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+        const GEMINI_VISION_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -346,111 +381,216 @@
                         evaluationData.fileUrl = downloadURL;
                         evaluationData.fileName = uploadedFile.name;
                         evaluationData.fileType = uploadedFile.type;
-                        saveEvaluation(evaluationData);
+                        processEvaluationWithGemini(evaluationData);
                     })
                     .catch((error) => {
                         formErrorDiv.textContent = 'Lỗi khi tải lên tệp: ' + error.message;
                     });
             } else {
-                saveEvaluation(evaluationData);
+                processEvaluationWithGemini(evaluationData);
             }
         });
 
-        // Save evaluation to Firestore
-        function saveEvaluation(evaluationData) {
-            db.collection('evaluations').add(evaluationData)
-                .then((docRef) => {
-                    formSuccessDiv.textContent = 'Đã gửi thông tin đánh giá thành công!';
-                    
-                    // Add user message to chat
-                    addMessageToChat({
-                        sender: 'user',
-                        text: evaluationData.message || 'Đã gửi tệp đính kèm',
-                        date: new Date().toLocaleString(),
-                        fileUrl: evaluationData.fileUrl,
-                        fileName: evaluationData.fileName
-                    });
-                    
-                    // Simulate bot response (in a real app, this would call an AI service)
-                    setTimeout(() => {
-                        const botResponse = generateBotResponse(evaluationData);
+        // Process evaluation with Gemini API
+        function processEvaluationWithGemini(evaluationData) {
+            // Add user message to chat
+            addMessageToChat({
+                sender: 'user',
+                text: evaluationData.message || 'Đã gửi tệp đính kèm',
+                date: new Date().toLocaleString(),
+                fileUrl: evaluationData.fileUrl,
+                fileName: evaluationData.fileName
+            });
+
+            // Show typing indicator
+            const typingIndicator = showTypingIndicator();
+
+            // Prepare prompt for Gemini
+            let prompt = `Bạn là một trợ lý ảo hỗ trợ giáo viên chủ nhiệm trong việc quản lý lớp học. 
+Hãy phân tích và đánh giá thông tin sau đây về lớp học ${classInfo.className}:`;
+
+            if (evaluationData.studentName) {
+                prompt += `\nHọc sinh liên quan: ${evaluationData.studentName}`;
+            }
+
+            if (evaluationData.message) {
+                prompt += `\nNội dung: ${evaluationData.message}`;
+            }
+
+            prompt += `\n\nHãy đưa ra đánh giá ngắn gọn (1-2 câu) và phân loại vào một trong các loại sau:
+- "violation": Nếu là vi phạm của học sinh (ghi rõ loại vi phạm)
+- "positive": Nếu là hành vi tích cực của học sinh (ghi rõ loại thành tích)
+- "class_issue": Nếu là vấn đề chung của lớp học
+- "class_positive": Nếu là thành tích chung của lớp học
+
+Kèm theo mức độ nghiêm trọng (nếu là vi phạm) hoặc mức độ đáng khen (nếu là thành tích) theo thang low/medium/high.
+
+Định dạng phản hồi JSON theo mẫu sau:
+{
+    "response": "Nội dung phản hồi",
+    "evaluation": {
+        "type": "loại đánh giá",
+        "details": {
+            "violationType/achievementType": "loại vi phạm/thành tích",
+            "severity": "mức độ"
+        }
+    }
+}`;
+
+            // Call Gemini API
+            if (evaluationData.fileUrl && evaluationData.fileType.startsWith('image/')) {
+                // For images, use Gemini Vision
+                callGeminiVisionAPI(prompt, evaluationData.fileUrl)
+                    .then(geminiResponse => {
+                        chatContainer.removeChild(typingIndicator);
+                        handleGeminiResponse(geminiResponse, evaluationData);
+                    })
+                    .catch(error => {
+                        chatContainer.removeChild(typingIndicator);
+                        console.error('Error calling Gemini Vision API:', error);
                         addMessageToChat({
                             sender: 'bot',
-                            text: botResponse.text,
-                            date: new Date().toLocaleString(),
-                            evaluation: botResponse.evaluation
+                            text: 'Xin lỗi, đã có lỗi khi xử lý hình ảnh. Vui lòng thử lại.',
+                            date: new Date().toLocaleString()
                         });
-                        
-                        // Save bot response to Firestore
-                        db.collection('evaluations').doc(docRef.id).update({
-                            botResponse: botResponse.text,
-                            evaluationType: botResponse.evaluation.type,
-                            evaluationDetails: botResponse.evaluation.details,
-                            status: 'completed'
+                    });
+            } else {
+                // For text only, use regular Gemini
+                callGeminiTextAPI(prompt)
+                    .then(geminiResponse => {
+                        chatContainer.removeChild(typingIndicator);
+                        handleGeminiResponse(geminiResponse, evaluationData);
+                    })
+                    .catch(error => {
+                        chatContainer.removeChild(typingIndicator);
+                        console.error('Error calling Gemini API:', error);
+                        addMessageToChat({
+                            sender: 'bot',
+                            text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.',
+                            date: new Date().toLocaleString()
                         });
-                    }, 2000);
-                    
-                    // Reset form
-                    messageInput.value = '';
-                    fileUploadInput.value = '';
-                    filePreviewContainer.innerHTML = '';
-                    uploadedFile = null;
+                    });
+            }
+        }
+
+        // Call Gemini Text API
+        async function callGeminiTextAPI(prompt) {
+            const response = await fetch(GEMINI_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
                 })
+            });
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        // Call Gemini Vision API
+        async function callGeminiVisionAPI(prompt, imageUrl) {
+            // First, we need to get the image as base64
+            const imageBlob = await fetch(imageUrl).then(r => r.blob());
+            const base64Image = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(imageBlob);
+            });
+
+            const response = await fetch(GEMINI_VISION_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            {
+                                inline_data: {
+                                    mime_type: "image/jpeg",
+                                    data: base64Image
+                                }
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        // Handle Gemini response
+        function handleGeminiResponse(geminiResponse, evaluationData) {
+            try {
+                // Try to parse the JSON response
+                const parsedResponse = JSON.parse(geminiResponse);
+                
+                // Add bot message to chat
+                addMessageToChat({
+                    sender: 'bot',
+                    text: parsedResponse.response,
+                    date: new Date().toLocaleString(),
+                    evaluation: parsedResponse.evaluation
+                });
+                
+                // Save evaluation to Firestore
+                saveEvaluationToFirestore(evaluationData, parsedResponse);
+                
+                // Reset form
+                messageInput.value = '';
+                fileUploadInput.value = '';
+                filePreviewContainer.innerHTML = '';
+                uploadedFile = null;
+                formSuccessDiv.textContent = 'Đã gửi thông tin đánh giá thành công!';
+            } catch (e) {
+                console.error('Error parsing Gemini response:', e);
+                addMessageToChat({
+                    sender: 'bot',
+                    text: geminiResponse + '\n\n(Lưu ý: Chatbot không trả về đúng định dạng JSON)',
+                    date: new Date().toLocaleString()
+                });
+            }
+        }
+
+        // Save evaluation to Firestore
+        function saveEvaluationToFirestore(evaluationData, geminiResponse) {
+            const evaluationToSave = {
+                ...evaluationData,
+                botResponse: geminiResponse.response,
+                evaluationType: geminiResponse.evaluation.type,
+                evaluationDetails: geminiResponse.evaluation.details,
+                status: 'completed'
+            };
+
+            db.collection('evaluations').add(evaluationToSave)
                 .catch((error) => {
-                    formErrorDiv.textContent = 'Lỗi khi lưu đánh giá: ' + error.message;
+                    console.error('Error saving evaluation:', error);
                 });
         }
 
-        // Generate bot response (simulated)
-        function generateBotResponse(evaluationData) {
-            const keywords = ['không làm bài', 'đi muộn', 'nói chuyện', 'đánh nhau', 'tích cực', 'tốt', 'xuất sắc'];
-            const hasNegative = ['không', 'chưa', 'muộn', 'thiếu', 'đánh', 'nói chuyện'].some(word => 
-                evaluationData.message?.toLowerCase().includes(word));
-            
-            let responseText = '';
-            let evaluationType = 'neutral';
-            let evaluationDetails = {};
-            
-            if (evaluationData.studentName) {
-                if (hasNegative) {
-                    responseText = `Chatbot đã ghi nhận sự việc liên quan đến học sinh ${evaluationData.studentName}. Đây là hành vi chưa tích cực cần được quan tâm.`;
-                    evaluationType = 'violation';
-                    evaluationDetails = {
-                        student: evaluationData.studentName,
-                        violationType: 'unspecified',
-                        severity: 'medium'
-                    };
-                } else {
-                    responseText = `Chatbot đã ghi nhận thông tin tích cực về học sinh ${evaluationData.studentName}. Đây là tín hiệu đáng khích lệ!`;
-                    evaluationType = 'positive';
-                    evaluationDetails = {
-                        student: evaluationData.studentName,
-                        achievementType: 'unspecified'
-                    };
-                }
-            } else {
-                if (hasNegative) {
-                    responseText = `Chatbot đã ghi nhận sự việc liên quan đến lớp. Đây là thông tin cần được quan tâm.`;
-                    evaluationType = 'class_issue';
-                    evaluationDetails = {
-                        issueType: 'unspecified'
-                    };
-                } else {
-                    responseText = `Chatbot đã ghi nhận thông tin tích cực về lớp. Cảm ơn bạn đã chia sẻ!`;
-                    evaluationType = 'class_positive';
-                    evaluationDetails = {
-                        achievementType: 'unspecified'
-                    };
-                }
-            }
-            
-            return {
-                text: responseText,
-                evaluation: {
-                    type: evaluationType,
-                    details: evaluationDetails
-                }
-            };
+        // Show typing indicator
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot-message';
+            typingDiv.innerHTML = `
+                <div><strong>Chatbot</strong></div>
+                <div class="typing-indicator">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return typingDiv;
         }
 
         // Add message to chat
@@ -472,7 +612,25 @@
             }
             
             if (message.evaluation) {
-                content += `<div class="file-info"><em>Đã phân loại: ${message.evaluation.type}</em></div>`;
+                let evaluationText = '';
+                switch (message.evaluation.type) {
+                    case 'violation':
+                        evaluationText = `Vi phạm: ${message.evaluation.details.violationType || 'không xác định'} (Mức độ: ${message.evaluation.details.severity || 'medium'})`;
+                        break;
+                    case 'positive':
+                        evaluationText = `Khen thưởng: ${message.evaluation.details.achievementType || 'không xác định'} (Mức độ: ${message.evaluation.details.severity || 'medium'})`;
+                        break;
+                    case 'class_issue':
+                        evaluationText = `Vấn đề lớp học: ${message.evaluation.details.issueType || 'không xác định'}`;
+                        break;
+                    case 'class_positive':
+                        evaluationText = `Thành tích lớp học: ${message.evaluation.details.achievementType || 'không xác định'}`;
+                        break;
+                    default:
+                        evaluationText = message.evaluation.type;
+                }
+                
+                content += `<div class="file-info"><em>${evaluationText}</em></div>`;
             }
             
             content += `<div class="file-info"><small>${message.date}</small></div>`;
@@ -509,7 +667,8 @@
                             text: evaluation.message || 'Đã gửi tệp đính kèm',
                             date: evaluation.createdAt?.toDate().toLocaleString() || new Date().toLocaleString(),
                             fileUrl: evaluation.fileUrl,
-                            fileName: evaluation.fileName
+                            fileName: evaluation.fileName,
+                            fileType: evaluation.fileType
                         });
                         
                         // Bot response if exists
@@ -532,7 +691,7 @@
         }
 
         // Send message
-        sendMessageBtn.addEventListener('click', () => {
+        sendMessageBtn.addEventListener('click', async () => {
             const message = userMessageInput.value.trim();
             if (!message) return;
             
@@ -543,14 +702,29 @@
                 date: new Date().toLocaleString()
             });
             
-            // Simulate bot response
-            setTimeout(() => {
+            // Show typing indicator
+            const typingIndicator = showTypingIndicator();
+            
+            try {
+                // Call Gemini API
+                const response = await callGeminiTextAPI(message);
+                chatContainer.removeChild(typingIndicator);
+                
+                // Add bot response to chat
                 addMessageToChat({
                     sender: 'bot',
-                    text: 'Cảm ơn phản hồi của bạn. Tôi đã ghi nhận thông tin này.',
+                    text: response,
                     date: new Date().toLocaleString()
                 });
-            }, 1000);
+            } catch (error) {
+                chatContainer.removeChild(typingIndicator);
+                console.error('Error calling Gemini API:', error);
+                addMessageToChat({
+                    sender: 'bot',
+                    text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.',
+                    date: new Date().toLocaleString()
+                });
+            }
             
             userMessageInput.value = '';
         });
