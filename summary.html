@@ -8,110 +8,270 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
+            background-color: #f8fafc;
         }
         .header {
-            background-color: #4285f4;
+            background-color: #3b82f6;
             color: white;
             padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
         .header h1 {
             margin: 0;
-            font-size: 24px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .logout-btn {
+        .header h1 i {
+            font-size: 1.3rem;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .menu-button {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .button {
             background-color: white;
-            color: #4285f4;
+            color: #3b82f6;
             border: none;
             padding: 8px 15px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
-        .logout-btn:hover {
-            background-color: #f1f1f1;
+        .button:hover {
+            background-color: #f1f5f9;
+            transform: translateY(-1px);
+        }
+        .button.primary {
+            background-color: #2563eb;
+            color: white;
+        }
+        .button.primary:hover {
+            background-color: #1d4ed8;
+        }
+        .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: white;
+            width: 200px;
+            border-radius: 0 0 0 8px;
+            box-shadow: -2px 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            overflow: hidden;
+        }
+        .mobile-menu.open {
+            display: block;
+        }
+        .mobile-menu .button {
+            width: 100%;
+            border-radius: 0;
+            justify-content: flex-start;
+            padding: 12px 20px;
+            color: #1e293b;
+            background-color: white;
+        }
+        .mobile-menu .button:hover {
+            background-color: #f1f5f9;
         }
         .container {
             max-width: 1000px;
             margin: 20px auto;
             padding: 20px;
             background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
         .section {
             margin-bottom: 30px;
         }
         .section-title {
-            color: #4285f4;
-            border-bottom: 2px solid #4285f4;
-            padding-bottom: 5px;
-            margin-bottom: 15px;
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title i {
+            font-size: 1rem;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
+            font-size: 0.95rem;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
             text-align: left;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #f1f5f9;
+            font-weight: 600;
+            color: #334155;
         }
         tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #f8fafc;
         }
-        button {
-            background-color: #4285f4;
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+        .export-btn {
+            background-color: #10b981;
             color: white;
             border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
+            padding: 10px 16px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
-            margin-right: 10px;
-        }
-        button:hover {
-            background-color: #3367d6;
-        }
-        .nav-buttons {
+            font-size: 1rem;
+            font-weight: 500;
             display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            margin-bottom: 15px;
+        }
+        .export-btn:hover {
+            background-color: #059669;
+            transform: translateY(-1px);
         }
         .filter-controls {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            align-items: center;
         }
         select, input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background-color: #f8fafc;
+            font-family: inherit;
+            min-width: 150px;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px #bfdbfe;
+        }
+        .apply-filter-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+        }
+        .apply-filter-btn:hover {
+            background-color: #2563eb;
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            .nav-buttons {
+                display: none;
+            }
+            .menu-button {
+                display: block;
+            }
+            .container {
+                margin: 15px;
+                padding: 15px;
+                border-radius: 8px;
+            }
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            select, input {
+                width: 100%;
+            }
+            table {
+                font-size: 0.85rem;
+            }
+            th, td {
+                padding: 8px 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Tổng kết Đánh giá</h1>
-        <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+        <h1><i class="fas fa-chart-bar"></i>Tổng kết Đánh giá</h1>
+        <button class="menu-button" id="menu-btn">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="nav-buttons">
+            <button class="button" id="manage-btn">
+                <i class="fas fa-chalkboard-teacher"></i>
+                Quản lý
+            </button>
+            <button class="button" id="chatbot-btn">
+                <i class="fas fa-robot"></i>
+                Chatbot
+            </button>
+            <button class="button primary" id="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Đăng xuất
+            </button>
+        </div>
+        <div class="mobile-menu" id="mobile-menu">
+            <button class="button" id="mobile-manage-btn">
+                <i class="fas fa-chalkboard-teacher"></i>
+                Quản lý
+            </button>
+            <button class="button" id="mobile-chatbot-btn">
+                <i class="fas fa-robot"></i>
+                Chatbot
+            </button>
+            <button class="button" id="mobile-logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Đăng xuất
+            </button>
+        </div>
     </div>
 
     <div class="container">
         <div class="section">
-            <h2 class="section-title">Bộ lọc dữ liệu</h2>
+            <h2 class="section-title"><i class="fas fa-filter"></i>Bộ lọc dữ liệu</h2>
             <div class="filter-controls">
                 <select id="filter-type">
                     <option value="all">Tất cả loại đánh giá</option>
@@ -125,12 +285,19 @@
                 </select>
                 <input type="date" id="filter-start-date">
                 <input type="date" id="filter-end-date">
-                <button id="apply-filter">Áp dụng</button>
+                <button class="apply-filter-btn" id="apply-filter">
+                    <i class="fas fa-check"></i>
+                    Áp dụng
+                </button>
             </div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">Dữ liệu học sinh</h2>
+            <h2 class="section-title"><i class="fas fa-user-graduate"></i>Dữ liệu học sinh</h2>
+            <button class="export-btn" id="export-student">
+                <i class="fas fa-file-excel"></i>
+                Xuất Excel (Học sinh)
+            </button>
             <div class="table-container">
                 <table id="student-table">
                     <thead>
@@ -142,11 +309,14 @@
                     <tbody></tbody>
                 </table>
             </div>
-            <button id="export-student">Xuất Excel (Học sinh)</button>
         </div>
 
         <div class="section">
-            <h2 class="section-title">Dữ liệu lớp học</h2>
+            <h2 class="section-title"><i class="fas fa-chalkboard"></i>Dữ liệu lớp học</h2>
+            <button class="export-btn" id="export-class">
+                <i class="fas fa-file-excel"></i>
+                Xuất Excel (Lớp học)
+            </button>
             <div class="table-container">
                 <table id="class-table">
                     <thead>
@@ -160,22 +330,16 @@
                     <tbody></tbody>
                 </table>
             </div>
-            <button id="export-class">Xuất Excel (Lớp học)</button>
-        </div>
-
-        <div class="nav-buttons">
-            <button id="manage-btn">Quay lại Quản lý</button>
-            <button id="chatbot-btn">Chatbot đánh giá</button>
         </div>
     </div>
 
     <script>
-        // Firebase configuration - thay thế bằng cấu hình của bạn
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyC7fGLildyGOyKC36ilCFLv8JKKNAxX4ug",
             authDomain: "h55-tl.firebaseapp.com",
             projectId: "h55-tl",
-            storageBucket: "h55-tl.firebasestorage.app",
+            storageBucket: "h55-tl.appspot.com",
             messagingSenderId: "989042965590",
             appId: "1:989042965590:web:63c7555b427a983ba10ff7"
         };
@@ -187,6 +351,9 @@
 
         // DOM elements
         const logoutBtn = document.getElementById('logout-btn');
+        const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
         const filterType = document.getElementById('filter-type');
         const filterStudent = document.getElementById('filter-student');
         const filterStartDate = document.getElementById('filter-start-date');
@@ -198,6 +365,8 @@
         const exportClassBtn = document.getElementById('export-class');
         const manageBtn = document.getElementById('manage-btn');
         const chatbotBtn = document.getElementById('chatbot-btn');
+        const mobileManageBtn = document.getElementById('mobile-manage-btn');
+        const mobileChatbotBtn = document.getElementById('mobile-chatbot-btn');
 
         // Variables
         let currentUser = null;
@@ -213,6 +382,18 @@
         filterStartDate.valueAsDate = startDate;
         filterEndDate.valueAsDate = endDate;
 
+        // Toggle mobile menu
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('open');
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mobileMenu.contains(e.target) && e.target !== menuBtn) {
+                mobileMenu.classList.remove('open');
+            }
+        });
+
         // Check authentication state
         auth.onAuthStateChanged((user) => {
             if (!user) {
@@ -225,6 +406,12 @@
 
         // Logout function
         logoutBtn.addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+
+        mobileLogoutBtn.addEventListener('click', () => {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             });
@@ -521,8 +708,18 @@
             window.location.href = 'manage.html';
         });
 
+        mobileManageBtn.addEventListener('click', () => {
+            window.location.href = 'manage.html';
+            mobileMenu.classList.remove('open');
+        });
+
         chatbotBtn.addEventListener('click', () => {
             window.location.href = 'chatbot.html';
+        });
+
+        mobileChatbotBtn.addEventListener('click', () => {
+            window.location.href = 'chatbot.html';
+            mobileMenu.classList.remove('open');
         });
     </script>
 </body>
