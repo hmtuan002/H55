@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tổng kết - Quản lý Lớp học</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .logout-btn {
+            background-color: white;
+            color: #4285f4;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .logout-btn:hover {
+            background-color: #f1f1f1;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            color: #4285f4;
+            border-bottom: 2px solid #4285f4;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        select, input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Tổng kết Đánh giá</h1>
+        <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h2 class="section-title">Bộ lọc dữ liệu</h2>
+            <div class="filter-controls">
+                <select id="filter-type">
+                    <option value="all">Tất cả loại đánh giá</option>
+                    <option value="violation">Vi phạm học sinh</option>
+                    <option value="positive">Khen thưởng học sinh</option>
+                    <option value="class_issue">Vấn đề lớp học</option>
+                    <option value="class_positive">Thành tích lớp học</option>
+                </select>
+                <select id="filter-student">
+                    <option value="all">Tất cả học sinh</option>
+                </select>
+                <input type="date" id="filter-start-date">
+                <input type="date" id="filter-end-date">
+                <button id="apply-filter">Áp dụng</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Dữ liệu học sinh</h2>
+            <div class="table-container">
+                <table id="student-table">
+                    <thead>
+                        <tr>
+                            <th>Tên học sinh</th>
+                            <!-- Các cột ngày sẽ được thêm bằng JavaScript -->
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="export-student">Xuất Excel (Học sinh)</button>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Dữ liệu lớp học</h2>
+            <div class="table-container">
+                <table id="class-table">
+                    <thead>
+                        <tr>
+                            <th>Ngày</th>
+                            <th>Loại</th>
+                            <th>Nội dung</th>
+                            <th>Học sinh liên quan</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="export-class">Xuất Excel (Lớp học)</button>
+        </div>
+
+        <div class="nav-buttons">
+            <button id="manage-btn">Quay lại Quản lý</button>
+            <button id="chatbot-btn">Chatbot đánh giá</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration - thay thế bằng cấu hình của bạn
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // DOM elements
+        const logoutBtn = document.getElementById('logout-btn');
+        const filterType = document.getElementById('filter-type');
+        const filterStudent = document.getElementById('filter-student');
+        const filterStartDate = document.getElementById('filter-start-date');
+        const filterEndDate = document.getElementById('filter-end-date');
+        const applyFilterBtn = document.getElementById('apply-filter');
+        const studentTable = document.getElementById('student-table').getElementsByTagName('tbody')[0];
+        const classTable = document.getElementById('class-table').getElementsByTagName('tbody')[0];
+        const exportStudentBtn = document.getElementById('export-student');
+        const exportClassBtn = document.getElementById('export-class');
+        const manageBtn = document.getElementById('manage-btn');
+        const chatbotBtn = document.getElementById('chatbot-btn');
+
+        // Variables
+        let currentUser = null;
+        let classInfo = null;
+        let evaluations = [];
+        let filteredEvaluations = [];
+
+        // Set default dates (last 30 days)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        
+        filterStartDate.valueAsDate = startDate;
+        filterEndDate.valueAsDate = endDate;
+
+        // Check authentication state
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                currentUser = user;
+                loadClassInfo();
+            }
+        });
+
+        // Logout function
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+
+        // Load class info and students
+        function loadClassInfo() {
+            db.collection('classes').doc(currentUser.uid).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        classInfo = doc.data();
+                        
+                        // Populate student filter
+                        filterStudent.innerHTML = '<option value="all">Tất cả học sinh</option>';
+                        classInfo.students.forEach((student) => {
+                            const option = document.createElement('option');
+                            option.value = student;
+                            option.textContent = student;
+                            filterStudent.appendChild(option);
+                        });
+                        
+                        // Load evaluations
+                        loadEvaluations();
+                    } else {
+                        // No class info, redirect to manage page
+                        window.location.href = 'manage.html';
+                    }
+                })
+                .catch((error) => {
+                    console.log('Error getting class info:', error);
+                });
+        }
+
+        // Load evaluations
+        function loadEvaluations() {
+            db.collection('evaluations')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc')
+                .get()
+                .then((querySnapshot) => {
+                    evaluations = [];
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (data.botResponse) { // Only include completed evaluations
+                            evaluations.push(data);
+                        }
+                    });
+                    
+                    applyFilters();
+                })
+                .catch((error) => {
+                    console.log('Error loading evaluations:', error);
+                });
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const typeFilter = filterType.value;
+            const studentFilter = filterStudent.value;
+            const startDateFilter = filterStartDate.value ? new Date(filterStartDate.value) : null;
+            const endDateFilter = filterEndDate.value ? new Date(filterEndDate.value) : null;
+            
+            filteredEvaluations = evaluations.filter(evaluation => {
+                // Type filter
+                if (typeFilter !== 'all' && evaluation.evaluationType !== typeFilter) {
+                    return false;
+                }
+                
+                // Student filter
+                if (studentFilter !== 'all') {
+                    if (!evaluation.studentName || evaluation.studentName !== studentFilter) {
+                        return false;
+                    }
+                }
+                
+                // Date filter
+                const incidentDate = evaluation.incidentDate ? new Date(evaluation.incidentDate) : evaluation.createdAt.toDate();
+                if (startDateFilter && incidentDate < startDateFilter) {
+                    return false;
+                }
+                if (endDateFilter && incidentDate > endDateFilter) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            updateTables();
+        }
+
+        // Update tables with filtered data
+        function updateTables() {
+            updateStudentTable();
+            updateClassTable();
+        }
+
+        // Update student table
+        function updateStudentTable() {
+            // Clear table
+            studentTable.innerHTML = '';
+            
+            // Get unique dates
+            const dates = [...new Set(filteredEvaluations
+                .filter(e => e.studentName)
+                .map(e => e.incidentDate || e.createdAt.toDate().toISOString().split('T')[0])
+            )].sort();
+            
+            // Update table header with dates
+            const headerRow = document.querySelector('#student-table thead tr');
+            headerRow.innerHTML = '<th>Tên học sinh</th>';
+            dates.forEach(date => {
+                const th = document.createElement('th');
+                th.textContent = date;
+                headerRow.appendChild(th);
+            });
+            
+            // Group evaluations by student
+            const studentData = {};
+            classInfo.students.forEach(student => {
+                studentData[student] = {};
+                dates.forEach(date => {
+                    studentData[student][date] = [];
+                });
+            });
+            
+            filteredEvaluations.forEach(evaluation => {
+                if (evaluation.studentName) {
+                    const date = evaluation.incidentDate || evaluation.createdAt.toDate().toISOString().split('T')[0];
+                    if (studentData[evaluation.studentName] && studentData[evaluation.studentName][date]) {
+                        studentData[evaluation.studentName][date].push(evaluation);
+                    }
+                }
+            });
+            
+            // Add rows for each student
+            classInfo.students.forEach(student => {
+                const row = document.createElement('tr');
+                const nameCell = document.createElement('td');
+                nameCell.textContent = student;
+                row.appendChild(nameCell);
+                
+                dates.forEach(date => {
+                    const cell = document.createElement('td');
+                    const evaluationsForDate = studentData[student][date] || [];
+                    
+                    if (evaluationsForDate.length > 0) {
+                        cell.textContent = evaluationsForDate.map(e => {
+                            return `${e.evaluationType === 'violation' ? '⚠️' : '🏆'} ${e.evaluationDetails?.violationType || e.evaluationDetails?.achievementType || ''}`;
+                        }).join(', ');
+                    }
+                    
+                    row.appendChild(cell);
+                });
+                
+                studentTable.appendChild(row);
+            });
+        }
+
+        // Update class table
+        function updateClassTable() {
+            // Clear table
+            classTable.innerHTML = '';
+            
+            // Sort evaluations by date
+            const sortedEvaluations = [...filteredEvaluations].sort((a, b) => {
+                const dateA = a.incidentDate ? new Date(a.incidentDate) : a.createdAt.toDate();
+                const dateB = b.incidentDate ? new Date(b.incidentDate) : b.createdAt.toDate();
+                return dateB - dateA;
+            });
+            
+            // Add rows for each evaluation
+            sortedEvaluations.forEach(evaluation => {
+                const row = document.createElement('tr');
+                
+                // Date cell
+                const dateCell = document.createElement('td');
+                const date = evaluation.incidentDate ? new Date(evaluation.incidentDate).toLocaleDateString() : evaluation.createdAt.toDate().toLocaleDateString();
+                dateCell.textContent = date;
+                row.appendChild(dateCell);
+                
+                // Type cell
+                const typeCell = document.createElement('td');
+                let typeText = '';
+                switch (evaluation.evaluationType) {
+                    case 'violation': typeText = '⚠️ Vi phạm HS'; break;
+                    case 'positive': typeText = '🏆 Khen thưởng HS'; break;
+                    case 'class_issue': typeText = '⚠️ Vấn đề lớp'; break;
+                    case 'class_positive': typeText = '🏆 Thành tích lớp'; break;
+                    default: typeText = evaluation.evaluationType;
+                }
+                typeCell.textContent = typeText;
+                row.appendChild(typeCell);
+                
+                // Content cell
+                const contentCell = document.createElement('td');
+                contentCell.textContent = evaluation.message || (evaluation.fileName ? `Tệp: ${evaluation.fileName}` : '');
+                row.appendChild(contentCell);
+                
+                // Student cell
+                const studentCell = document.createElement('td');
+                studentCell.textContent = evaluation.studentName || '-';
+                row.appendChild(studentCell);
+                
+                classTable.appendChild(row);
+            });
+        }
+
+        // Export student data to Excel
+        exportStudentBtn.addEventListener('click', () => {
+            // Prepare data
+            const dates = [...new Set(filteredEvaluations
+                .filter(e => e.studentName)
+                .map(e => e.incidentDate || e.createdAt.toDate().toISOString().split('T')[0])
+            )].sort();
+            
+            const studentData = [];
+            
+            // Header row
+            const headerRow = ['Tên học sinh', ...dates];
+            studentData.push(headerRow);
+            
+            // Data rows
+            classInfo.students.forEach(student => {
+                const row = [student];
+                
+                dates.forEach(date => {
+                    const evaluationsForDate = filteredEvaluations.filter(e => 
+                        e.studentName === student && 
+                        (e.incidentDate === date || e.createdAt.toDate().toISOString().split('T')[0] === date)
+                    );
+                    
+                    if (evaluationsForDate.length > 0) {
+                        row.push(evaluationsForDate.map(e => {
+                            return `${e.evaluationType === 'violation' ? 'Vi phạm' : 'Khen thưởng'}: ${e.evaluationDetails?.violationType || e.evaluationDetails?.achievementType || ''}`;
+                        }).join('\n'));
+                    } else {
+                        row.push('');
+                    }
+                });
+                
+                studentData.push(row);
+            });
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(studentData);
+            XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu học sinh");
+            
+            // Export
+            XLSX.writeFile(wb, `Dữ liệu học sinh - ${classInfo.className}.xlsx`);
+        });
+
+        // Export class data to Excel
+        exportClassBtn.addEventListener('click', () => {
+            // Prepare data
+            const classData = [
+                ['Ngày', 'Loại', 'Nội dung', 'Học sinh liên quan']
+            ];
+            
+            filteredEvaluations.forEach(evaluation => {
+                const date = evaluation.incidentDate ? new Date(evaluation.incidentDate).toLocaleDateString() : evaluation.createdAt.toDate().toLocaleDateString();
+                
+                let typeText = '';
+                switch (evaluation.evaluationType) {
+                    case 'violation': typeText = 'Vi phạm HS'; break;
+                    case 'positive': typeText = 'Khen thưởng HS'; break;
+                    case 'class_issue': typeText = 'Vấn đề lớp'; break;
+                    case 'class_positive': typeText = 'Thành tích lớp'; break;
+                    default: typeText = evaluation.evaluationType;
+                }
+                
+                classData.push([
+                    date,
+                    typeText,
+                    evaluation.message || (evaluation.fileName ? `Tệp: ${evaluation.fileName}` : ''),
+                    evaluation.studentName || '-'
+                ]);
+            });
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(classData);
+            XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu lớp học");
+            
+            // Export
+            XLSX.writeFile(wb, `Dữ liệu lớp học - ${classInfo.className}.xlsx`);
+        });
+
+        // Apply filters button
+        applyFilterBtn.addEventListener('click', applyFilters);
+
+        // Navigation buttons
+        manageBtn.addEventListener('click', () => {
+            window.location.href = 'manage.html';
+        });
+
+        chatbotBtn.addEventListener('click', () => {
+            window.location.href = 'chatbot.html';
+        });
+    </script>
+</body>
+</html>
