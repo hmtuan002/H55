@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Lớp học</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .logout-btn {
+            background-color: white;
+            color: #4285f4;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .logout-btn:hover {
+            background-color: #f1f1f1;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            color: #4285f4;
+            border-bottom: 2px solid #4285f4;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        .student-list {
+            margin-top: 20px;
+        }
+        .student-item {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .error {
+            color: #d32f2f;
+            margin-top: 5px;
+        }
+        .success {
+            color: #388e3c;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Quản lý Lớp học</h1>
+        <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h2 class="section-title">Thông tin lớp học</h2>
+            <div class="form-group">
+                <label for="class-name">Tên lớp</label>
+                <input type="text" id="class-name" placeholder="Nhập tên lớp">
+            </div>
+            <div class="form-group">
+                <label for="student-count">Số lượng học sinh</label>
+                <input type="number" id="student-count" min="1" placeholder="Nhập số lượng học sinh">
+            </div>
+            <button id="generate-fields-btn">Tạo danh sách học sinh</button>
+            <div id="class-error" class="error"></div>
+            <div id="class-success" class="success"></div>
+        </div>
+
+        <div class="section" id="students-section" style="display: none;">
+            <h2 class="section-title">Danh sách học sinh</h2>
+            <div id="student-fields"></div>
+            <button id="save-students-btn">Lưu danh sách</button>
+            <div id="students-error" class="error"></div>
+            <div id="students-success" class="success"></div>
+            
+            <div class="student-list" id="saved-students" style="display: none;">
+                <h3>Danh sách học sinh đã lưu</h3>
+                <div id="students-list"></div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <button id="chatbot-btn" style="display: none;">Chatbot đánh giá</button>
+            <button id="summary-btn" style="display: none;">Xem tổng kết</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration - thay thế bằng cấu hình của bạn
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // DOM elements
+        const logoutBtn = document.getElementById('logout-btn');
+        const classNameInput = document.getElementById('class-name');
+        const studentCountInput = document.getElementById('student-count');
+        const generateFieldsBtn = document.getElementById('generate-fields-btn');
+        const studentFieldsDiv = document.getElementById('student-fields');
+        const saveStudentsBtn = document.getElementById('save-students-btn');
+        const studentsSection = document.getElementById('students-section');
+        const savedStudentsDiv = document.getElementById('saved-students');
+        const studentsListDiv = document.getElementById('students-list');
+        const classErrorDiv = document.getElementById('class-error');
+        const classSuccessDiv = document.getElementById('class-success');
+        const studentsErrorDiv = document.getElementById('students-error');
+        const studentsSuccessDiv = document.getElementById('students-success');
+        const chatbotBtn = document.getElementById('chatbot-btn');
+        const summaryBtn = document.getElementById('summary-btn');
+
+        // Variables
+        let currentUser = null;
+        let classInfo = null;
+
+        // Check authentication state
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                currentUser = user;
+                loadClassInfo();
+            }
+        });
+
+        // Logout function
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+
+        // Generate student fields
+        generateFieldsBtn.addEventListener('click', () => {
+            const className = classNameInput.value.trim();
+            const studentCount = parseInt(studentCountInput.value);
+            
+            classErrorDiv.textContent = '';
+            
+            if (!className) {
+                classErrorDiv.textContent = 'Vui lòng nhập tên lớp';
+                return;
+            }
+            
+            if (isNaN(studentCount) || studentCount < 1) {
+                classErrorDiv.textContent = 'Vui lòng nhập số lượng học sinh hợp lệ';
+                return;
+            }
+
+            // Generate input fields for students
+            studentFieldsDiv.innerHTML = '';
+            for (let i = 0; i < studentCount; i++) {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                div.innerHTML = `
+                    <label for="student-${i}">Học sinh ${i + 1}</label>
+                    <input type="text" id="student-${i}" placeholder="Nhập tên học sinh">
+                `;
+                studentFieldsDiv.appendChild(div);
+            }
+            
+            studentsSection.style.display = 'block';
+            classSuccessDiv.textContent = 'Vui lòng nhập tên học sinh và lưu lại';
+        });
+
+        // Save students
+        saveStudentsBtn.addEventListener('click', () => {
+            const className = classNameInput.value.trim();
+            const studentCount = parseInt(studentCountInput.value);
+            const students = [];
+            
+            studentsErrorDiv.textContent = '';
+            
+            // Collect student names
+            for (let i = 0; i < studentCount; i++) {
+                const studentName = document.getElementById(`student-${i}`).value.trim();
+                if (!studentName) {
+                    studentsErrorDiv.textContent = `Vui lòng nhập tên cho học sinh ${i + 1}`;
+                    return;
+                }
+                students.push(studentName);
+            }
+
+            // Save to Firestore
+            const classRef = db.collection('classes').doc(currentUser.uid);
+            
+            classRef.set({
+                className: className,
+                studentCount: studentCount,
+                students: students,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                studentsSuccessDiv.textContent = 'Lưu thông tin lớp học thành công!';
+                classInfo = {
+                    className: className,
+                    studentCount: studentCount,
+                    students: students
+                };
+                
+                // Show saved students
+                showSavedStudents(students);
+                
+                // Enable navigation buttons
+                chatbotBtn.style.display = 'block';
+                summaryBtn.style.display = 'block';
+            })
+            .catch((error) => {
+                studentsErrorDiv.textContent = 'Lỗi khi lưu thông tin: ' + error.message;
+            });
+        });
+
+        // Show saved students
+        function showSavedStudents(students) {
+            studentsListDiv.innerHTML = '';
+            students.forEach((student, index) => {
+                const div = document.createElement('div');
+                div.className = 'student-item';
+                div.innerHTML = `
+                    <span>${index + 1}. ${student}</span>
+                `;
+                studentsListDiv.appendChild(div);
+            });
+            savedStudentsDiv.style.display = 'block';
+        }
+
+        // Load class info
+        function loadClassInfo() {
+            db.collection('classes').doc(currentUser.uid).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        classInfo = doc.data();
+                        classNameInput.value = classInfo.className;
+                        studentCountInput.value = classInfo.studentCount;
+                        
+                        // Show student fields
+                        studentFieldsDiv.innerHTML = '';
+                        classInfo.students.forEach((student, index) => {
+                            const div = document.createElement('div');
+                            div.className = 'form-group';
+                            div.innerHTML = `
+                                <label for="student-${index}">Học sinh ${index + 1}</label>
+                                <input type="text" id="student-${index}" value="${student}">
+                            `;
+                            studentFieldsDiv.appendChild(div);
+                        });
+                        
+                        studentsSection.style.display = 'block';
+                        showSavedStudents(classInfo.students);
+                        
+                        // Enable navigation buttons
+                        chatbotBtn.style.display = 'block';
+                        summaryBtn.style.display = 'block';
+                    }
+                })
+                .catch((error) => {
+                    console.log('Error getting class info:', error);
+                });
+        }
+
+        // Navigation buttons
+        chatbotBtn.addEventListener('click', () => {
+            window.location.href = 'chatbot.html';
+        });
+
+        summaryBtn.addEventListener('click', () => {
+            window.location.href = 'summary.html';
+        });
+    </script>
+</body>
+</html>
