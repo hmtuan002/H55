@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Đánh giá - Quản lý Lớp học</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .logout-btn {
+            background-color: white;
+            color: #4285f4;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .logout-btn:hover {
+            background-color: #f1f1f1;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            color: #4285f4;
+            border-bottom: 2px solid #4285f4;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        .bot-message {
+            background-color: #f1f1f1;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+        }
+        .file-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 10px;
+        }
+        .file-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .error {
+            color: #d32f2f;
+            margin-top: 5px;
+        }
+        .success {
+            color: #388e3c;
+            margin-top: 5px;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Chatbot Đánh giá</h1>
+        <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h2 class="section-title">Nhập thông tin đánh giá</h2>
+            <div class="form-group">
+                <label for="incident-date">Ngày xảy ra sự việc</label>
+                <input type="date" id="incident-date">
+            </div>
+            <div class="form-group">
+                <label for="student-name">Học sinh liên quan (nếu có)</label>
+                <select id="student-name">
+                    <option value="">-- Chọn học sinh --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="message">Nội dung đánh giá</label>
+                <textarea id="message" placeholder="Nhập nội dung đánh giá hoặc thông tin sự việc..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="file-upload">Tải lên tệp đính kèm (hình ảnh hoặc tài liệu)</label>
+                <input type="file" id="file-upload">
+                <div id="file-preview-container"></div>
+            </div>
+            <button id="send-btn">Gửi đánh giá</button>
+            <div id="form-error" class="error"></div>
+            <div id="form-success" class="success"></div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Phản hồi từ Chatbot</h2>
+            <div class="chat-container" id="chat-container"></div>
+            <div class="form-group">
+                <label for="user-message">Nhập tin nhắn (nếu cần trao đổi thêm)</label>
+                <textarea id="user-message" placeholder="Nhập tin nhắn của bạn..."></textarea>
+            </div>
+            <button id="send-message-btn">Gửi tin nhắn</button>
+        </div>
+
+        <div class="nav-buttons">
+            <button id="manage-btn">Quay lại Quản lý</button>
+            <button id="summary-btn">Xem tổng kết</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration - thay thế bằng cấu hình của bạn
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // DOM elements
+        const logoutBtn = document.getElementById('logout-btn');
+        const incidentDateInput = document.getElementById('incident-date');
+        const studentNameSelect = document.getElementById('student-name');
+        const messageInput = document.getElementById('message');
+        const fileUploadInput = document.getElementById('file-upload');
+        const filePreviewContainer = document.getElementById('file-preview-container');
+        const sendBtn = document.getElementById('send-btn');
+        const formErrorDiv = document.getElementById('form-error');
+        const formSuccessDiv = document.getElementById('form-success');
+        const chatContainer = document.getElementById('chat-container');
+        const userMessageInput = document.getElementById('user-message');
+        const sendMessageBtn = document.getElementById('send-message-btn');
+        const manageBtn = document.getElementById('manage-btn');
+        const summaryBtn = document.getElementById('summary-btn');
+
+        // Variables
+        let currentUser = null;
+        let classInfo = null;
+        let uploadedFile = null;
+        let chatHistory = [];
+
+        // Set today's date as default
+        incidentDateInput.valueAsDate = new Date();
+
+        // Check authentication state
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                currentUser = user;
+                loadClassInfo();
+            }
+        });
+
+        // Logout function
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+
+        // Load class info and students
+        function loadClassInfo() {
+            db.collection('classes').doc(currentUser.uid).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        classInfo = doc.data();
+                        
+                        // Populate student dropdown
+                        studentNameSelect.innerHTML = '<option value="">-- Chọn học sinh --</option>';
+                        classInfo.students.forEach((student) => {
+                            const option = document.createElement('option');
+                            option.value = student;
+                            option.textContent = student;
+                            studentNameSelect.appendChild(option);
+                        });
+                        
+                        // Load chat history
+                        loadChatHistory();
+                    } else {
+                        // No class info, redirect to manage page
+                        window.location.href = 'manage.html';
+                    }
+                })
+                .catch((error) => {
+                    console.log('Error getting class info:', error);
+                });
+        }
+
+        // File upload handling
+        fileUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            uploadedFile = file;
+            filePreviewContainer.innerHTML = '';
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'file-preview';
+                    filePreviewContainer.appendChild(img);
+                    
+                    const info = document.createElement('div');
+                    info.className = 'file-info';
+                    info.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                    filePreviewContainer.appendChild(info);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                const info = document.createElement('div');
+                info.className = 'file-info';
+                info.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                filePreviewContainer.appendChild(info);
+            }
+        });
+
+        // Send evaluation
+        sendBtn.addEventListener('click', () => {
+            const incidentDate = incidentDateInput.value;
+            const studentName = studentNameSelect.value;
+            const message = messageInput.value.trim();
+            
+            formErrorDiv.textContent = '';
+            formSuccessDiv.textContent = '';
+            
+            if (!incidentDate) {
+                formErrorDiv.textContent = 'Vui lòng chọn ngày xảy ra sự việc';
+                return;
+            }
+            
+            if (!message && !uploadedFile) {
+                formErrorDiv.textContent = 'Vui lòng nhập nội dung hoặc tải lên tệp đính kèm';
+                return;
+            }
+
+            // Prepare evaluation data
+            const evaluationData = {
+                userId: currentUser.uid,
+                className: classInfo.className,
+                incidentDate: incidentDate,
+                studentName: studentName || null,
+                message: message || null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'pending'
+            };
+
+            // Upload file if exists
+            if (uploadedFile) {
+                const fileRef = storage.ref().child(`evaluations/${currentUser.uid}/${Date.now()}_${uploadedFile.name}`);
+                fileRef.put(uploadedFile)
+                    .then((snapshot) => {
+                        return snapshot.ref.getDownloadURL();
+                    })
+                    .then((downloadURL) => {
+                        evaluationData.fileUrl = downloadURL;
+                        evaluationData.fileName = uploadedFile.name;
+                        evaluationData.fileType = uploadedFile.type;
+                        saveEvaluation(evaluationData);
+                    })
+                    .catch((error) => {
+                        formErrorDiv.textContent = 'Lỗi khi tải lên tệp: ' + error.message;
+                    });
+            } else {
+                saveEvaluation(evaluationData);
+            }
+        });
+
+        // Save evaluation to Firestore
+        function saveEvaluation(evaluationData) {
+            db.collection('evaluations').add(evaluationData)
+                .then((docRef) => {
+                    formSuccessDiv.textContent = 'Đã gửi thông tin đánh giá thành công!';
+                    
+                    // Add user message to chat
+                    addMessageToChat({
+                        sender: 'user',
+                        text: evaluationData.message || 'Đã gửi tệp đính kèm',
+                        date: new Date().toLocaleString(),
+                        fileUrl: evaluationData.fileUrl,
+                        fileName: evaluationData.fileName
+                    });
+                    
+                    // Simulate bot response (in a real app, this would call an AI service)
+                    setTimeout(() => {
+                        const botResponse = generateBotResponse(evaluationData);
+                        addMessageToChat({
+                            sender: 'bot',
+                            text: botResponse.text,
+                            date: new Date().toLocaleString(),
+                            evaluation: botResponse.evaluation
+                        });
+                        
+                        // Save bot response to Firestore
+                        db.collection('evaluations').doc(docRef.id).update({
+                            botResponse: botResponse.text,
+                            evaluationType: botResponse.evaluation.type,
+                            evaluationDetails: botResponse.evaluation.details,
+                            status: 'completed'
+                        });
+                    }, 2000);
+                    
+                    // Reset form
+                    messageInput.value = '';
+                    fileUploadInput.value = '';
+                    filePreviewContainer.innerHTML = '';
+                    uploadedFile = null;
+                })
+                .catch((error) => {
+                    formErrorDiv.textContent = 'Lỗi khi lưu đánh giá: ' + error.message;
+                });
+        }
+
+        // Generate bot response (simulated)
+        function generateBotResponse(evaluationData) {
+            const keywords = ['không làm bài', 'đi muộn', 'nói chuyện', 'đánh nhau', 'tích cực', 'tốt', 'xuất sắc'];
+            const hasNegative = ['không', 'chưa', 'muộn', 'thiếu', 'đánh', 'nói chuyện'].some(word => 
+                evaluationData.message?.toLowerCase().includes(word));
+            
+            let responseText = '';
+            let evaluationType = 'neutral';
+            let evaluationDetails = {};
+            
+            if (evaluationData.studentName) {
+                if (hasNegative) {
+                    responseText = `Chatbot đã ghi nhận sự việc liên quan đến học sinh ${evaluationData.studentName}. Đây là hành vi chưa tích cực cần được quan tâm.`;
+                    evaluationType = 'violation';
+                    evaluationDetails = {
+                        student: evaluationData.studentName,
+                        violationType: 'unspecified',
+                        severity: 'medium'
+                    };
+                } else {
+                    responseText = `Chatbot đã ghi nhận thông tin tích cực về học sinh ${evaluationData.studentName}. Đây là tín hiệu đáng khích lệ!`;
+                    evaluationType = 'positive';
+                    evaluationDetails = {
+                        student: evaluationData.studentName,
+                        achievementType: 'unspecified'
+                    };
+                }
+            } else {
+                if (hasNegative) {
+                    responseText = `Chatbot đã ghi nhận sự việc liên quan đến lớp. Đây là thông tin cần được quan tâm.`;
+                    evaluationType = 'class_issue';
+                    evaluationDetails = {
+                        issueType: 'unspecified'
+                    };
+                } else {
+                    responseText = `Chatbot đã ghi nhận thông tin tích cực về lớp. Cảm ơn bạn đã chia sẻ!`;
+                    evaluationType = 'class_positive';
+                    evaluationDetails = {
+                        achievementType: 'unspecified'
+                    };
+                }
+            }
+            
+            return {
+                text: responseText,
+                evaluation: {
+                    type: evaluationType,
+                    details: evaluationDetails
+                }
+            };
+        }
+
+        // Add message to chat
+        function addMessageToChat(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${message.sender}-message`;
+            
+            let content = `
+                <div><strong>${message.sender === 'user' ? 'Bạn' : 'Chatbot'}</strong></div>
+                <div>${message.text || ''}</div>
+            `;
+            
+            if (message.fileUrl) {
+                if (message.fileType?.startsWith('image/')) {
+                    content += `<img src="${message.fileUrl}" class="file-preview">`;
+                } else {
+                    content += `<div class="file-info">Tệp đính kèm: <a href="${message.fileUrl}" target="_blank">${message.fileName}</a></div>`;
+                }
+            }
+            
+            if (message.evaluation) {
+                content += `<div class="file-info"><em>Đã phân loại: ${message.evaluation.type}</em></div>`;
+            }
+            
+            content += `<div class="file-info"><small>${message.date}</small></div>`;
+            
+            messageDiv.innerHTML = content;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Add to chat history
+            chatHistory.push(message);
+        }
+
+        // Load chat history
+        function loadChatHistory() {
+            db.collection('evaluations')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc')
+                .limit(10)
+                .get()
+                .then((querySnapshot) => {
+                    const evaluations = [];
+                    querySnapshot.forEach((doc) => {
+                        evaluations.push(doc.data());
+                    });
+                    
+                    // Sort by date ascending for display
+                    evaluations.sort((a, b) => a.createdAt?.toDate() - b.createdAt?.toDate());
+                    
+                    // Display in chat
+                    evaluations.forEach((evaluation) => {
+                        // User message
+                        addMessageToChat({
+                            sender: 'user',
+                            text: evaluation.message || 'Đã gửi tệp đính kèm',
+                            date: evaluation.createdAt?.toDate().toLocaleString() || new Date().toLocaleString(),
+                            fileUrl: evaluation.fileUrl,
+                            fileName: evaluation.fileName
+                        });
+                        
+                        // Bot response if exists
+                        if (evaluation.botResponse) {
+                            addMessageToChat({
+                                sender: 'bot',
+                                text: evaluation.botResponse,
+                                date: evaluation.createdAt?.toDate().toLocaleString() || new Date().toLocaleString(),
+                                evaluation: {
+                                    type: evaluation.evaluationType,
+                                    details: evaluation.evaluationDetails
+                                }
+                            });
+                        }
+                    });
+                })
+                .catch((error) => {
+                    console.log('Error loading chat history:', error);
+                });
+        }
+
+        // Send message
+        sendMessageBtn.addEventListener('click', () => {
+            const message = userMessageInput.value.trim();
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessageToChat({
+                sender: 'user',
+                text: message,
+                date: new Date().toLocaleString()
+            });
+            
+            // Simulate bot response
+            setTimeout(() => {
+                addMessageToChat({
+                    sender: 'bot',
+                    text: 'Cảm ơn phản hồi của bạn. Tôi đã ghi nhận thông tin này.',
+                    date: new Date().toLocaleString()
+                });
+            }, 1000);
+            
+            userMessageInput.value = '';
+        });
+
+        // Navigation buttons
+        manageBtn.addEventListener('click', () => {
+            window.location.href = 'manage.html';
+        });
+
+        summaryBtn.addEventListener('click', () => {
+            window.location.href = 'summary.html';
+        });
+    </script>
+</body>
+</html>
