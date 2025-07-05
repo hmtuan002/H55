@@ -7,157 +7,304 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
+            background-color: #f8fafc;
         }
         .header {
-            background-color: #4285f4;
+            background-color: #3b82f6;
             color: white;
             padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
         .header h1 {
             margin: 0;
-            font-size: 24px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .logout-btn {
+        .header h1 i {
+            font-size: 1.3rem;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .menu-button {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .button {
             background-color: white;
-            color: #4285f4;
+            color: #3b82f6;
             border: none;
             padding: 8px 15px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
-        .logout-btn:hover {
-            background-color: #f1f1f1;
+        .button:hover {
+            background-color: #f1f5f9;
+            transform: translateY(-1px);
+        }
+        .button.primary {
+            background-color: #2563eb;
+            color: white;
+        }
+        .button.primary:hover {
+            background-color: #1d4ed8;
+        }
+        .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: white;
+            width: 200px;
+            border-radius: 0 0 0 8px;
+            box-shadow: -2px 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            overflow: hidden;
+        }
+        .mobile-menu.open {
+            display: block;
+        }
+        .mobile-menu .button {
+            width: 100%;
+            border-radius: 0;
+            justify-content: flex-start;
+            padding: 12px 20px;
+            color: #1e293b;
+            background-color: white;
+        }
+        .mobile-menu .button:hover {
+            background-color: #f1f5f9;
         }
         .container {
             max-width: 1000px;
             margin: 20px auto;
             padding: 20px;
             background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
         .section {
             margin-bottom: 30px;
         }
         .section-title {
-            color: #4285f4;
-            border-bottom: 2px solid #4285f4;
-            padding-bottom: 5px;
-            margin-bottom: 15px;
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title i {
+            font-size: 1rem;
         }
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.95rem;
         }
         input, select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
             box-sizing: border-box;
+            font-family: inherit;
+            background-color: #f8fafc;
+            transition: border 0.2s ease;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px #bfdbfe;
         }
         button {
-            background-color: #4285f4;
+            background-color: #3b82f6;
             color: white;
             border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
+            padding: 10px 16px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
         }
         button:hover {
-            background-color: #3367d6;
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
         }
         .student-list {
-            margin-top: 20px;
+            margin-top: 25px;
         }
         .student-item {
-            background-color: #f9f9f9;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 5px;
+            background-color: #f8fafc;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e2e8f0;
         }
-        .nav-buttons {
+        .student-item span {
             display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
+            align-items: center;
+            gap: 8px;
         }
         .error {
-            color: #d32f2f;
-            margin-top: 5px;
+            color: #ef4444;
+            margin-top: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .success {
-            color: #388e3c;
-            margin-top: 5px;
+            color: #10b981;
+            margin-top: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            .nav-buttons {
+                display: none;
+            }
+            .menu-button {
+                display: block;
+            }
+            .container {
+                margin: 15px;
+                padding: 15px;
+                border-radius: 8px;
+            }
+            .student-item {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Quản lý Lớp học</h1>
-        <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+        <h1><i class="fas fa-chalkboard-teacher"></i>Quản lý Lớp học</h1>
+        <button class="menu-button" id="menu-btn">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="nav-buttons">
+            <button class="button" id="chatbot-btn">
+                <i class="fas fa-robot"></i>
+                Chatbot
+            </button>
+            <button class="button" id="summary-btn">
+                <i class="fas fa-chart-pie"></i>
+                Tổng kết
+            </button>
+            <button class="button primary" id="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Đăng xuất
+            </button>
+        </div>
+        <div class="mobile-menu" id="mobile-menu">
+            <button class="button" id="mobile-chatbot-btn">
+                <i class="fas fa-robot"></i>
+                Chatbot
+            </button>
+            <button class="button" id="mobile-summary-btn">
+                <i class="fas fa-chart-pie"></i>
+                Tổng kết
+            </button>
+            <button class="button" id="mobile-logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Đăng xuất
+            </button>
+        </div>
     </div>
 
     <div class="container">
         <div class="section">
-            <h2 class="section-title">Thông tin lớp học</h2>
+            <h2 class="section-title"><i class="fas fa-info-circle"></i>Thông tin lớp học</h2>
             <div class="form-group">
-                <label for="class-name">Tên lớp</label>
+                <label for="class-name"><i class="fas fa-chalkboard"></i> Tên lớp</label>
                 <input type="text" id="class-name" placeholder="Nhập tên lớp">
             </div>
             <div class="form-group">
-                <label for="student-count">Số lượng học sinh</label>
+                <label for="student-count"><i class="fas fa-users"></i> Số lượng học sinh</label>
                 <input type="number" id="student-count" min="1" placeholder="Nhập số lượng học sinh">
             </div>
-            <button id="generate-fields-btn">Tạo danh sách học sinh</button>
+            <button id="generate-fields-btn">
+                <i class="fas fa-list-ol"></i>
+                Tạo danh sách học sinh
+            </button>
             <div id="class-error" class="error"></div>
             <div id="class-success" class="success"></div>
         </div>
 
         <div class="section" id="students-section" style="display: none;">
-            <h2 class="section-title">Danh sách học sinh</h2>
+            <h2 class="section-title"><i class="fas fa-user-graduate"></i>Danh sách học sinh</h2>
             <div id="student-fields"></div>
-            <button id="save-students-btn">Lưu danh sách</button>
+            <button id="save-students-btn">
+                <i class="fas fa-save"></i>
+                Lưu danh sách
+            </button>
             <div id="students-error" class="error"></div>
             <div id="students-success" class="success"></div>
             
             <div class="student-list" id="saved-students" style="display: none;">
-                <h3>Danh sách học sinh đã lưu</h3>
+                <h3><i class="fas fa-list-check"></i> Danh sách học sinh đã lưu</h3>
                 <div id="students-list"></div>
             </div>
-        </div>
-
-        <div class="nav-buttons">
-            <button id="chatbot-btn" style="display: none;">Chatbot đánh giá</button>
-            <button id="summary-btn" style="display: none;">Xem tổng kết</button>
         </div>
     </div>
 
     <script>
-        // Firebase configuration - thay thế bằng cấu hình của bạn
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyC7fGLildyGOyKC36ilCFLv8JKKNAxX4ug",
             authDomain: "h55-tl.firebaseapp.com",
             projectId: "h55-tl",
-            storageBucket: "h55-tl.firebasestorage.app",
+            storageBucket: "h55-tl.appspot.com",
             messagingSenderId: "989042965590",
             appId: "1:989042965590:web:63c7555b427a983ba10ff7"
         };
@@ -169,6 +316,9 @@
 
         // DOM elements
         const logoutBtn = document.getElementById('logout-btn');
+        const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
         const classNameInput = document.getElementById('class-name');
         const studentCountInput = document.getElementById('student-count');
         const generateFieldsBtn = document.getElementById('generate-fields-btn');
@@ -183,10 +333,24 @@
         const studentsSuccessDiv = document.getElementById('students-success');
         const chatbotBtn = document.getElementById('chatbot-btn');
         const summaryBtn = document.getElementById('summary-btn');
+        const mobileChatbotBtn = document.getElementById('mobile-chatbot-btn');
+        const mobileSummaryBtn = document.getElementById('mobile-summary-btn');
 
         // Variables
         let currentUser = null;
         let classInfo = null;
+
+        // Toggle mobile menu
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('open');
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mobileMenu.contains(e.target) && e.target !== menuBtn) {
+                mobileMenu.classList.remove('open');
+            }
+        });
 
         // Check authentication state
         auth.onAuthStateChanged((user) => {
@@ -205,6 +369,12 @@
             });
         });
 
+        mobileLogoutBtn.addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+
         // Generate student fields
         generateFieldsBtn.addEventListener('click', () => {
             const className = classNameInput.value.trim();
@@ -213,12 +383,12 @@
             classErrorDiv.textContent = '';
             
             if (!className) {
-                classErrorDiv.textContent = 'Vui lòng nhập tên lớp';
+                classErrorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Vui lòng nhập tên lớp';
                 return;
             }
             
             if (isNaN(studentCount) || studentCount < 1) {
-                classErrorDiv.textContent = 'Vui lòng nhập số lượng học sinh hợp lệ';
+                classErrorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Vui lòng nhập số lượng học sinh hợp lệ';
                 return;
             }
 
@@ -228,14 +398,14 @@
                 const div = document.createElement('div');
                 div.className = 'form-group';
                 div.innerHTML = `
-                    <label for="student-${i}">Học sinh ${i + 1}</label>
+                    <label for="student-${i}"><i class="fas fa-user"></i> Học sinh ${i + 1}</label>
                     <input type="text" id="student-${i}" placeholder="Nhập tên học sinh">
                 `;
                 studentFieldsDiv.appendChild(div);
             }
             
             studentsSection.style.display = 'block';
-            classSuccessDiv.textContent = 'Vui lòng nhập tên học sinh và lưu lại';
+            classSuccessDiv.innerHTML = '<i class="fas fa-check-circle"></i> Vui lòng nhập tên học sinh và lưu lại';
         });
 
         // Save students
@@ -250,7 +420,7 @@
             for (let i = 0; i < studentCount; i++) {
                 const studentName = document.getElementById(`student-${i}`).value.trim();
                 if (!studentName) {
-                    studentsErrorDiv.textContent = `Vui lòng nhập tên cho học sinh ${i + 1}`;
+                    studentsErrorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Vui lòng nhập tên cho học sinh ${i + 1}`;
                     return;
                 }
                 students.push(studentName);
@@ -266,7 +436,7 @@
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             })
             .then(() => {
-                studentsSuccessDiv.textContent = 'Lưu thông tin lớp học thành công!';
+                studentsSuccessDiv.innerHTML = '<i class="fas fa-check-circle"></i> Lưu thông tin lớp học thành công!';
                 classInfo = {
                     className: className,
                     studentCount: studentCount,
@@ -276,12 +446,14 @@
                 // Show saved students
                 showSavedStudents(students);
                 
-                // Enable navigation buttons
-                chatbotBtn.style.display = 'block';
-                summaryBtn.style.display = 'block';
+                // Show navigation buttons
+                chatbotBtn.style.display = 'flex';
+                summaryBtn.style.display = 'flex';
+                mobileChatbotBtn.style.display = 'flex';
+                mobileSummaryBtn.style.display = 'flex';
             })
             .catch((error) => {
-                studentsErrorDiv.textContent = 'Lỗi khi lưu thông tin: ' + error.message;
+                studentsErrorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Lỗi khi lưu thông tin: ${error.message}`;
             });
         });
 
@@ -292,7 +464,7 @@
                 const div = document.createElement('div');
                 div.className = 'student-item';
                 div.innerHTML = `
-                    <span>${index + 1}. ${student}</span>
+                    <span><i class="fas fa-user-graduate"></i>${index + 1}. ${student}</span>
                 `;
                 studentsListDiv.appendChild(div);
             });
@@ -314,7 +486,7 @@
                             const div = document.createElement('div');
                             div.className = 'form-group';
                             div.innerHTML = `
-                                <label for="student-${index}">Học sinh ${index + 1}</label>
+                                <label for="student-${index}"><i class="fas fa-user"></i> Học sinh ${index + 1}</label>
                                 <input type="text" id="student-${index}" value="${student}">
                             `;
                             studentFieldsDiv.appendChild(div);
@@ -323,9 +495,11 @@
                         studentsSection.style.display = 'block';
                         showSavedStudents(classInfo.students);
                         
-                        // Enable navigation buttons
-                        chatbotBtn.style.display = 'block';
-                        summaryBtn.style.display = 'block';
+                        // Show navigation buttons
+                        chatbotBtn.style.display = 'flex';
+                        summaryBtn.style.display = 'flex';
+                        mobileChatbotBtn.style.display = 'flex';
+                        mobileSummaryBtn.style.display = 'flex';
                     }
                 })
                 .catch((error) => {
@@ -338,8 +512,18 @@
             window.location.href = 'chatbot.html';
         });
 
+        mobileChatbotBtn.addEventListener('click', () => {
+            window.location.href = 'chatbot.html';
+            mobileMenu.classList.remove('open');
+        });
+
         summaryBtn.addEventListener('click', () => {
             window.location.href = 'summary.html';
+        });
+
+        mobileSummaryBtn.addEventListener('click', () => {
+            window.location.href = 'summary.html';
+            mobileMenu.classList.remove('open');
         });
     </script>
 </body>
