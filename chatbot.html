@@ -229,10 +229,12 @@
             appId: "1:989042965590:web:63c7555b427a983ba10ff7"
         };
 
-        // Gemini API Key
+        // Gemini API Key - Sử dụng API key của bạn
         const GEMINI_API_KEY = "AIzaSyAn9dMMM5u8dEGpI8mEzQvdMSuI8KFH8jM";
-        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
-        const GEMINI_VISION_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
+        
+        // Cập nhật URL API (bỏ chữ beta)
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+        const GEMINI_VISION_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -406,36 +408,25 @@
             const typingIndicator = showTypingIndicator();
 
             // Prepare prompt for Gemini
-            let prompt = `Bạn là một trợ lý ảo hỗ trợ giáo viên chủ nhiệm trong việc quản lý lớp học. 
-Hãy phân tích và đánh giá thông tin sau đây về lớp học ${classInfo.className}:`;
+            let prompt = `Bạn là trợ lý ảo hỗ trợ giáo viên. Phân tích thông tin sau về lớp ${classInfo.className}:
 
-            if (evaluationData.studentName) {
-                prompt += `\nHọc sinh liên quan: ${evaluationData.studentName}`;
-            }
+${evaluationData.studentName ? "Học sinh: " + evaluationData.studentName + "\n" : ""}
+${evaluationData.message ? "Nội dung: " + evaluationData.message : ""}
 
-            if (evaluationData.message) {
-                prompt += `\nNội dung: ${evaluationData.message}`;
-            }
+Hãy trả lời theo ĐÚNG định dạng JSON sau, không thêm bất kỳ ký tự nào ngoài JSON:
 
-            prompt += `\n\nHãy đưa ra đánh giá ngắn gọn (1-2 câu) và phân loại vào một trong các loại sau:
-- "violation": Nếu là vi phạm của học sinh (ghi rõ loại vi phạm)
-- "positive": Nếu là hành vi tích cực của học sinh (ghi rõ loại thành tích)
-- "class_issue": Nếu là vấn đề chung của lớp học
-- "class_positive": Nếu là thành tích chung của lớp học
-
-Kèm theo mức độ nghiêm trọng (nếu là vi phạm) hoặc mức độ đáng khen (nếu là thành tích) theo thang low/medium/high.
-
-Định dạng phản hồi JSON theo mẫu sau:
 {
-    "response": "Nội dung phản hồi",
-    "evaluation": {
-        "type": "loại đánh giá",
-        "details": {
-            "violationType/achievementType": "loại vi phạm/thành tích",
-            "severity": "mức độ"
-        }
+  "response": "Nội dung phản hồi ngắn gọn",
+  "evaluation": {
+    "type": "violation|positive|class_issue|class_positive",
+    "details": {
+      "violationType|achievementType|issueType": "Loại vi phạm/thành tích/vấn đề",
+      "severity": "low|medium|high"
     }
-}`;
+  }
+}
+
+Chỉ trả về JSON, không có markdown hay text nào khác.`;
 
             // Call Gemini API
             if (evaluationData.fileUrl && evaluationData.fileType.startsWith('image/')) {
@@ -450,7 +441,7 @@ Kèm theo mức độ nghiêm trọng (nếu là vi phạm) hoặc mức độ �
                         console.error('Error calling Gemini Vision API:', error);
                         addMessageToChat({
                             sender: 'bot',
-                            text: 'Xin lỗi, đã có lỗi khi xử lý hình ảnh. Vui lòng thử lại.',
+                            text: 'Xin lỗi, đã có lỗi khi xử lý hình ảnh. Vui lòng thử lại.\n' + error.message,
                             date: new Date().toLocaleString()
                         });
                     });
@@ -466,72 +457,118 @@ Kèm theo mức độ nghiêm trọng (nếu là vi phạm) hoặc mức độ �
                         console.error('Error calling Gemini API:', error);
                         addMessageToChat({
                             sender: 'bot',
-                            text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.',
+                            text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.\n' + error.message,
                             date: new Date().toLocaleString()
                         });
                     });
             }
         }
 
-        // Call Gemini Text API
+        // Call Gemini Text API (đã sửa lỗi)
         async function callGeminiTextAPI(prompt) {
-            const response = await fetch(GEMINI_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: prompt
+            try {
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
                         }]
-                    }]
-                })
-            });
+                    })
+                });
 
-            const data = await response.json();
-            return data.candidates[0].content.parts[0].text;
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Kiểm tra cấu trúc response an toàn
+                if (!data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    console.error('Invalid response structure:', data);
+                    throw new Error('Invalid response structure from Gemini API');
+                }
+                
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                throw error;
+            }
         }
 
-        // Call Gemini Vision API
+        // Call Gemini Vision API (đã sửa lỗi)
         async function callGeminiVisionAPI(prompt, imageUrl) {
-            // First, we need to get the image as base64
-            const imageBlob = await fetch(imageUrl).then(r => r.blob());
-            const base64Image = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.readAsDataURL(imageBlob);
-            });
+            try {
+                // First, we need to get the image as base64
+                const imageBlob = await fetch(imageUrl).then(r => r.blob());
+                const base64Image = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.readAsDataURL(imageBlob);
+                });
 
-            const response = await fetch(GEMINI_VISION_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            {
-                                inline_data: {
-                                    mime_type: "image/jpeg",
-                                    data: base64Image
+                const response = await fetch(GEMINI_VISION_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                {
+                                    inline_data: {
+                                        mime_type: "image/jpeg",
+                                        data: base64Image
+                                    }
                                 }
-                            }
-                        ]
-                    }]
-                })
-            });
+                            ]
+                        }]
+                    })
+                });
 
-            const data = await response.json();
-            return data.candidates[0].content.parts[0].text;
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Kiểm tra cấu trúc response an toàn
+                if (!data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    console.error('Invalid response structure:', data);
+                    throw new Error('Invalid response structure from Gemini Vision API');
+                }
+                
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) {
+                console.error('Error calling Gemini Vision API:', error);
+                throw error;
+            }
         }
 
-        // Handle Gemini response
+        // Handle Gemini response (đã sửa lỗi)
         function handleGeminiResponse(geminiResponse, evaluationData) {
             try {
                 // Try to parse the JSON response
-                const parsedResponse = JSON.parse(geminiResponse);
+                let parsedResponse;
+                try {
+                    parsedResponse = JSON.parse(geminiResponse);
+                } catch (e) {
+                    // Nếu không parse được JSON, coi như plain text
+                    parsedResponse = {
+                        response: geminiResponse,
+                        evaluation: {
+                            type: "unknown",
+                            details: {}
+                        }
+                    };
+                }
                 
                 // Add bot message to chat
                 addMessageToChat({
@@ -551,10 +588,10 @@ Kèm theo mức độ nghiêm trọng (nếu là vi phạm) hoặc mức độ �
                 uploadedFile = null;
                 formSuccessDiv.textContent = 'Đã gửi thông tin đánh giá thành công!';
             } catch (e) {
-                console.error('Error parsing Gemini response:', e);
+                console.error('Error handling Gemini response:', e);
                 addMessageToChat({
                     sender: 'bot',
-                    text: geminiResponse + '\n\n(Lưu ý: Chatbot không trả về đúng định dạng JSON)',
+                    text: 'Lỗi khi xử lý phản hồi từ AI. Vui lòng thử lại.\n' + geminiResponse,
                     date: new Date().toLocaleString()
                 });
             }
@@ -721,7 +758,7 @@ Kèm theo mức độ nghiêm trọng (nếu là vi phạm) hoặc mức độ �
                 console.error('Error calling Gemini API:', error);
                 addMessageToChat({
                     sender: 'bot',
-                    text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.',
+                    text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.\n' + error.message,
                     date: new Date().toLocaleString()
                 });
             }
