@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot Đánh giá - Quản lý Lớp học</title>
+    <title>Chatbot Báo Cáo - Quản lý Lớp học</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -16,7 +18,7 @@
             background-color: #f5f5f5;
         }
         .header {
-            background-color: #4285f4;
+            background-color: #2c82c9;
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -30,7 +32,7 @@
         }
         .logout-btn {
             background-color: white;
-            color: #4285f4;
+            color: #2c82c9;
             border: none;
             padding: 8px 15px;
             border-radius: 4px;
@@ -52,42 +54,10 @@
             margin-bottom: 30px;
         }
         .section-title {
-            color: #4285f4;
-            border-bottom: 2px solid #4285f4;
+            color: #2c82c9;
+            border-bottom: 2px solid #2c82c9;
             padding-bottom: 5px;
             margin-bottom: 15px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        input, textarea, select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        textarea {
-            height: 100px;
-            resize: vertical;
-        }
-        button {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #3367d6;
         }
         .chat-container {
             border: 1px solid #ddd;
@@ -124,60 +94,74 @@
             color: #666;
             margin-top: 5px;
         }
-        .error {
-            color: #d32f2f;
-            margin-top: 5px;
+        .form-group {
+            margin-bottom: 15px;
         }
-        .success {
-            color: #388e3c;
-            margin-top: 5px;
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #2c82c9;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #1e6fb8;
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #2c82c9;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         .nav-buttons {
             display: flex;
             justify-content: space-between;
             margin-top: 20px;
         }
-        .typing-indicator {
-            display: inline-block;
-            padding: 5px 10px;
-            background-color: #f1f1f1;
-            border-radius: 15px;
-            font-size: 14px;
-            color: #555;
-        }
-        .typing-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #888;
-            margin: 0 2px;
-            animation: typingAnimation 1.4s infinite ease-in-out;
-        }
-        .typing-dot:nth-child(1) {
-            animation-delay: 0s;
-        }
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-        @keyframes typingAnimation {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-5px); }
-        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Chatbot Đánh giá (Gemini)</h1>
+        <h1>Chatbot Báo Cáo Lớp Học</h1>
         <button class="logout-btn" id="logout-btn">Đăng xuất</button>
     </div>
 
     <div class="container">
         <div class="section">
-            <h2 class="section-title">Nhập thông tin đánh giá</h2>
+            <h2 class="section-title">Nhập thông tin báo cáo</h2>
             <div class="form-group">
                 <label for="incident-date">Ngày xảy ra sự việc</label>
                 <input type="date" id="incident-date">
@@ -189,27 +173,26 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="message">Nội dung đánh giá</label>
-                <textarea id="message" placeholder="Nhập nội dung đánh giá hoặc thông tin sự việc..."></textarea>
+                <label for="message">Nội dung báo cáo</label>
+                <textarea id="message" placeholder="Nhập nội dung báo cáo hoặc thông tin sự việc..."></textarea>
             </div>
             <div class="form-group">
                 <label for="file-upload">Tải lên tệp đính kèm (hình ảnh hoặc tài liệu)</label>
                 <input type="file" id="file-upload">
                 <div id="file-preview-container"></div>
             </div>
-            <button id="send-btn">Gửi đánh giá</button>
-            <div id="form-error" class="error"></div>
-            <div id="form-success" class="success"></div>
+            <button id="send-btn">Gửi báo cáo</button>
         </div>
 
         <div class="section">
             <h2 class="section-title">Phản hồi từ Chatbot</h2>
-            <div class="chat-container" id="chat-container"></div>
-            <div class="form-group">
-                <label for="user-message">Nhập tin nhắn (nếu cần trao đổi thêm)</label>
-                <textarea id="user-message" placeholder="Nhập tin nhắn của bạn..."></textarea>
+            <div class="chat-container" id="chat-container">
+                <div id="typing-indicator" class="typing-indicator hidden">
+                    <div class="loading-spinner"></div>
+                    <span>AI đang phân tích, vui lòng đợi...</span>
+                </div>
+                <div id="chat-messages"></div>
             </div>
-            <button id="send-message-btn">Gửi tin nhắn</button>
         </div>
 
         <div class="nav-buttons">
@@ -229,13 +212,6 @@
             appId: "1:989042965590:web:63c7555b427a983ba10ff7"
         };
 
-        // Gemini API Key - Sử dụng API key của bạn
-        const GEMINI_API_KEY = "AIzaSyAn9dMMM5u8dEGpI8mEzQvdMSuI8KFH8jM";
-        
-        // Cập nhật URL API (bỏ chữ beta)
-        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-lite-preview-06-17:generateContent?key=${GEMINI_API_KEY}`;
-        const GEMINI_VISION_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-lite-preview-06-17:generateContent?key=${GEMINI_API_KEY}`;
-
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -250,11 +226,9 @@
         const fileUploadInput = document.getElementById('file-upload');
         const filePreviewContainer = document.getElementById('file-preview-container');
         const sendBtn = document.getElementById('send-btn');
-        const formErrorDiv = document.getElementById('form-error');
-        const formSuccessDiv = document.getElementById('form-success');
         const chatContainer = document.getElementById('chat-container');
-        const userMessageInput = document.getElementById('user-message');
-        const sendMessageBtn = document.getElementById('send-message-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        const typingIndicator = document.getElementById('typing-indicator');
         const manageBtn = document.getElementById('manage-btn');
         const summaryBtn = document.getElementById('summary-btn');
 
@@ -348,16 +322,13 @@
             const studentName = studentNameSelect.value;
             const message = messageInput.value.trim();
             
-            formErrorDiv.textContent = '';
-            formSuccessDiv.textContent = '';
-            
             if (!incidentDate) {
-                formErrorDiv.textContent = 'Vui lòng chọn ngày xảy ra sự việc';
+                alert('Vui lòng chọn ngày xảy ra sự việc');
                 return;
             }
             
             if (!message && !uploadedFile) {
-                formErrorDiv.textContent = 'Vui lòng nhập nội dung hoặc tải lên tệp đính kèm';
+                alert('Vui lòng nhập nội dung hoặc tải lên tệp đính kèm');
                 return;
             }
 
@@ -372,6 +343,16 @@
                 status: 'pending'
             };
 
+            // Add user message to chat
+            addMessageToChat('user', message || 'Đã gửi tệp đính kèm', uploadedFile ? {
+                url: URL.createObjectURL(uploadedFile),
+                name: uploadedFile.name,
+                type: uploadedFile.type
+            } : null);
+
+            // Show typing indicator
+            typingIndicator.classList.remove('hidden');
+
             // Upload file if exists
             if (uploadedFile) {
                 const fileRef = storage.ref().child(`evaluations/${currentUser.uid}/${Date.now()}_${uploadedFile.name}`);
@@ -383,301 +364,114 @@
                         evaluationData.fileUrl = downloadURL;
                         evaluationData.fileName = uploadedFile.name;
                         evaluationData.fileType = uploadedFile.type;
-                        processEvaluationWithGemini(evaluationData);
+                        processEvaluation(evaluationData);
                     })
                     .catch((error) => {
-                        formErrorDiv.textContent = 'Lỗi khi tải lên tệp: ' + error.message;
+                        console.error('Error uploading file:', error);
+                        typingIndicator.classList.add('hidden');
+                        addMessageToChat('bot', 'Lỗi khi tải lên tệp: ' + error.message);
                     });
             } else {
-                processEvaluationWithGemini(evaluationData);
+                processEvaluation(evaluationData);
             }
         });
 
-        // Process evaluation with Gemini API
-        function processEvaluationWithGemini(evaluationData) {
-            // Add user message to chat
-            addMessageToChat({
-                sender: 'user',
-                text: evaluationData.message || 'Đã gửi tệp đính kèm',
-                date: new Date().toLocaleString(),
-                fileUrl: evaluationData.fileUrl,
-                fileName: evaluationData.fileName
-            });
-
-            // Show typing indicator
-            const typingIndicator = showTypingIndicator();
-
-            // Prepare prompt for Gemini
-            let prompt = `Bạn là trợ lý ảo hỗ trợ giáo viên. Phân tích thông tin sau về lớp ${classInfo.className}:
-
-${evaluationData.studentName ? "Học sinh: " + evaluationData.studentName + "\n" : ""}
-${evaluationData.message ? "Nội dung: " + evaluationData.message : ""}
-
-Hãy trả lời theo ĐÚNG định dạng JSON sau, không thêm bất kỳ ký tự nào ngoài JSON:
-
-{
-  "response": "Nội dung phản hồi ngắn gọn",
-  "evaluation": {
-    "type": "violation|positive|class_issue|class_positive",
-    "details": {
-      "violationType|achievementType|issueType": "Loại vi phạm/thành tích/vấn đề",
-      "severity": "low|medium|high"
-    }
-  }
-}
-
-Chỉ trả về JSON, không có markdown hay text nào khác.`;
-
-            // Call Gemini API
-            if (evaluationData.fileUrl && evaluationData.fileType.startsWith('image/')) {
-                // For images, use Gemini Vision
-                callGeminiVisionAPI(prompt, evaluationData.fileUrl)
-                    .then(geminiResponse => {
-                        chatContainer.removeChild(typingIndicator);
-                        handleGeminiResponse(geminiResponse, evaluationData);
-                    })
-                    .catch(error => {
-                        chatContainer.removeChild(typingIndicator);
-                        console.error('Error calling Gemini Vision API:', error);
-                        addMessageToChat({
-                            sender: 'bot',
-                            text: 'Xin lỗi, đã có lỗi khi xử lý hình ảnh. Vui lòng thử lại.\n' + error.message,
-                            date: new Date().toLocaleString()
-                        });
-                    });
-            } else {
-                // For text only, use regular Gemini
-                callGeminiTextAPI(prompt)
-                    .then(geminiResponse => {
-                        chatContainer.removeChild(typingIndicator);
-                        handleGeminiResponse(geminiResponse, evaluationData);
-                    })
-                    .catch(error => {
-                        chatContainer.removeChild(typingIndicator);
-                        console.error('Error calling Gemini API:', error);
-                        addMessageToChat({
-                            sender: 'bot',
-                            text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.\n' + error.message,
-                            date: new Date().toLocaleString()
-                        });
-                    });
-            }
-        }
-
-        // Call Gemini Text API (đã sửa lỗi)
-        async function callGeminiTextAPI(prompt) {
-            try {
-                const response = await fetch(GEMINI_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: prompt
-                            }]
-                        }]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
+        // Process evaluation
+        function processEvaluation(evaluationData) {
+            // Simulate AI processing
+            setTimeout(() => {
+                typingIndicator.classList.add('hidden');
                 
-                // Kiểm tra cấu trúc response an toàn
-                if (!data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    console.error('Invalid response structure:', data);
-                    throw new Error('Invalid response structure from Gemini API');
-                }
+                // Generate response based on evaluation data
+                let response = '';
+                let evaluationType = '';
+                let evaluationDetails = {};
                 
-                return data.candidates[0].content.parts[0].text;
-            } catch (error) {
-                console.error('Error calling Gemini API:', error);
-                throw error;
-            }
-        }
-
-        // Call Gemini Vision API (đã sửa lỗi)
-        async function callGeminiVisionAPI(prompt, imageUrl) {
-            try {
-                // First, we need to get the image as base64
-                const imageBlob = await fetch(imageUrl).then(r => r.blob());
-                const base64Image = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.readAsDataURL(imageBlob);
-                });
-
-                const response = await fetch(GEMINI_VISION_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: prompt },
-                                {
-                                    inline_data: {
-                                        mime_type: "image/jpeg",
-                                        data: base64Image
-                                    }
-                                }
-                            ]
-                        }]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                // Kiểm tra cấu trúc response an toàn
-                if (!data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    console.error('Invalid response structure:', data);
-                    throw new Error('Invalid response structure from Gemini Vision API');
-                }
-                
-                return data.candidates[0].content.parts[0].text;
-            } catch (error) {
-                console.error('Error calling Gemini Vision API:', error);
-                throw error;
-            }
-        }
-
-        // Handle Gemini response (đã sửa lỗi)
-        function handleGeminiResponse(geminiResponse, evaluationData) {
-            try {
-                // Try to parse the JSON response
-                let parsedResponse;
-                try {
-                    parsedResponse = JSON.parse(geminiResponse);
-                } catch (e) {
-                    // Nếu không parse được JSON, coi như plain text
-                    parsedResponse = {
-                        response: geminiResponse,
-                        evaluation: {
-                            type: "unknown",
-                            details: {}
-                        }
+                if (evaluationData.studentName) {
+                    if (evaluationData.message && evaluationData.message.toLowerCase().includes('tốt')) {
+                        response = `Đã ghi nhận hành vi tích cực của học sinh ${evaluationData.studentName}.`;
+                        evaluationType = 'positive';
+                        evaluationDetails = {
+                            student: evaluationData.studentName,
+                            achievementType: 'hành vi tốt'
+                        };
+                    } else {
+                        response = `Đã ghi nhận sự việc liên quan đến học sinh ${evaluationData.studentName}.`;
+                        evaluationType = 'violation';
+                        evaluationDetails = {
+                            student: evaluationData.studentName,
+                            violationType: 'vi phạm nội quy',
+                            severity: 'medium'
+                        };
+                    }
+                } else {
+                    response = 'Đã ghi nhận thông tin báo cáo lớp học.';
+                    evaluationType = 'class_issue';
+                    evaluationDetails = {
+                        issueType: 'thông tin chung'
                     };
                 }
                 
-                // Add bot message to chat
-                addMessageToChat({
-                    sender: 'bot',
-                    text: parsedResponse.response,
-                    date: new Date().toLocaleString(),
-                    evaluation: parsedResponse.evaluation
+                // Add bot response to chat
+                addMessageToChat('bot', response, null, {
+                    type: evaluationType,
+                    details: evaluationDetails
                 });
                 
-                // Save evaluation to Firestore
-                saveEvaluationToFirestore(evaluationData, parsedResponse);
+                // Save to Firestore
+                db.collection('evaluations').add({
+                    ...evaluationData,
+                    botResponse: response,
+                    evaluationType: evaluationType,
+                    evaluationDetails: evaluationDetails,
+                    status: 'completed'
+                }).catch(error => {
+                    console.error('Error saving evaluation:', error);
+                });
                 
                 // Reset form
                 messageInput.value = '';
                 fileUploadInput.value = '';
                 filePreviewContainer.innerHTML = '';
                 uploadedFile = null;
-                formSuccessDiv.textContent = 'Đã gửi thông tin đánh giá thành công!';
-            } catch (e) {
-                console.error('Error handling Gemini response:', e);
-                addMessageToChat({
-                    sender: 'bot',
-                    text: 'Lỗi khi xử lý phản hồi từ AI. Vui lòng thử lại.\n' + geminiResponse,
-                    date: new Date().toLocaleString()
-                });
-            }
-        }
-
-        // Save evaluation to Firestore
-        function saveEvaluationToFirestore(evaluationData, geminiResponse) {
-            const evaluationToSave = {
-                ...evaluationData,
-                botResponse: geminiResponse.response,
-                evaluationType: geminiResponse.evaluation.type,
-                evaluationDetails: geminiResponse.evaluation.details,
-                status: 'completed'
-            };
-
-            db.collection('evaluations').add(evaluationToSave)
-                .catch((error) => {
-                    console.error('Error saving evaluation:', error);
-                });
-        }
-
-        // Show typing indicator
-        function showTypingIndicator() {
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'message bot-message';
-            typingDiv.innerHTML = `
-                <div><strong>Chatbot</strong></div>
-                <div class="typing-indicator">
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                </div>
-            `;
-            chatContainer.appendChild(typingDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            return typingDiv;
+            }, 2000);
         }
 
         // Add message to chat
-        function addMessageToChat(message) {
+        function addMessageToChat(role, content, file = null, evaluation = null) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${message.sender}-message`;
+            messageDiv.className = role === 'user' ? 'user-message' : 'bot-message';
             
-            let content = `
-                <div><strong>${message.sender === 'user' ? 'Bạn' : 'Chatbot'}</strong></div>
-                <div>${message.text || ''}</div>
-            `;
+            let htmlContent = `<div>${content || ''}</div>`;
             
-            if (message.fileUrl) {
-                if (message.fileType?.startsWith('image/')) {
-                    content += `<img src="${message.fileUrl}" class="file-preview">`;
+            if (file) {
+                if (file.type.startsWith('image/')) {
+                    htmlContent += `<img src="${file.url}" class="file-preview">`;
                 } else {
-                    content += `<div class="file-info">Tệp đính kèm: <a href="${message.fileUrl}" target="_blank">${message.fileName}</a></div>`;
+                    htmlContent += `<div class="file-info">Tệp đính kèm: <a href="${file.url}" target="_blank">${file.name}</a></div>`;
                 }
             }
             
-            if (message.evaluation) {
+            if (evaluation) {
                 let evaluationText = '';
-                switch (message.evaluation.type) {
+                switch (evaluation.type) {
                     case 'violation':
-                        evaluationText = `Vi phạm: ${message.evaluation.details.violationType || 'không xác định'} (Mức độ: ${message.evaluation.details.severity || 'medium'})`;
+                        evaluationText = `Vi phạm: ${evaluation.details.violationType || 'không xác định'} (Mức độ: ${evaluation.details.severity || 'medium'})`;
                         break;
                     case 'positive':
-                        evaluationText = `Khen thưởng: ${message.evaluation.details.achievementType || 'không xác định'} (Mức độ: ${message.evaluation.details.severity || 'medium'})`;
+                        evaluationText = `Khen thưởng: ${evaluation.details.achievementType || 'không xác định'}`;
                         break;
                     case 'class_issue':
-                        evaluationText = `Vấn đề lớp học: ${message.evaluation.details.issueType || 'không xác định'}`;
+                        evaluationText = `Vấn đề lớp học: ${evaluation.details.issueType || 'không xác định'}`;
                         break;
-                    case 'class_positive':
-                        evaluationText = `Thành tích lớp học: ${message.evaluation.details.achievementType || 'không xác định'}`;
-                        break;
-                    default:
-                        evaluationText = message.evaluation.type;
                 }
                 
-                content += `<div class="file-info"><em>${evaluationText}</em></div>`;
+                htmlContent += `<div class="file-info"><em>${evaluationText}</em></div>`;
             }
             
-            content += `<div class="file-info"><small>${message.date}</small></div>`;
-            
-            messageDiv.innerHTML = content;
-            chatContainer.appendChild(messageDiv);
+            messageDiv.innerHTML = htmlContent;
+            chatMessages.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            // Add to chat history
-            chatHistory.push(message);
         }
 
         // Load chat history
@@ -699,25 +493,17 @@ Chỉ trả về JSON, không có markdown hay text nào khác.`;
                     // Display in chat
                     evaluations.forEach((evaluation) => {
                         // User message
-                        addMessageToChat({
-                            sender: 'user',
-                            text: evaluation.message || 'Đã gửi tệp đính kèm',
-                            date: evaluation.createdAt?.toDate().toLocaleString() || new Date().toLocaleString(),
-                            fileUrl: evaluation.fileUrl,
-                            fileName: evaluation.fileName,
-                            fileType: evaluation.fileType
-                        });
+                        addMessageToChat('user', evaluation.message || 'Đã gửi tệp đính kèm', evaluation.fileUrl ? {
+                            url: evaluation.fileUrl,
+                            name: evaluation.fileName,
+                            type: evaluation.fileType
+                        } : null);
                         
                         // Bot response if exists
                         if (evaluation.botResponse) {
-                            addMessageToChat({
-                                sender: 'bot',
-                                text: evaluation.botResponse,
-                                date: evaluation.createdAt?.toDate().toLocaleString() || new Date().toLocaleString(),
-                                evaluation: {
-                                    type: evaluation.evaluationType,
-                                    details: evaluation.evaluationDetails
-                                }
+                            addMessageToChat('bot', evaluation.botResponse, null, {
+                                type: evaluation.evaluationType,
+                                details: evaluation.evaluationDetails
                             });
                         }
                     });
@@ -726,45 +512,6 @@ Chỉ trả về JSON, không có markdown hay text nào khác.`;
                     console.log('Error loading chat history:', error);
                 });
         }
-
-        // Send message
-        sendMessageBtn.addEventListener('click', async () => {
-            const message = userMessageInput.value.trim();
-            if (!message) return;
-            
-            // Add user message to chat
-            addMessageToChat({
-                sender: 'user',
-                text: message,
-                date: new Date().toLocaleString()
-            });
-            
-            // Show typing indicator
-            const typingIndicator = showTypingIndicator();
-            
-            try {
-                // Call Gemini API
-                const response = await callGeminiTextAPI(message);
-                chatContainer.removeChild(typingIndicator);
-                
-                // Add bot response to chat
-                addMessageToChat({
-                    sender: 'bot',
-                    text: response,
-                    date: new Date().toLocaleString()
-                });
-            } catch (error) {
-                chatContainer.removeChild(typingIndicator);
-                console.error('Error calling Gemini API:', error);
-                addMessageToChat({
-                    sender: 'bot',
-                    text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu. Vui lòng thử lại.\n' + error.message,
-                    date: new Date().toLocaleString()
-                });
-            }
-            
-            userMessageInput.value = '';
-        });
 
         // Navigation buttons
         manageBtn.addEventListener('click', () => {
